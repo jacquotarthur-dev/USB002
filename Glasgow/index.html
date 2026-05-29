@@ -1,1 +1,840 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>USB002_Brussels</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface2: #1c1c1c;
+      --border: #272727;
+      --border2: #333;
+      --accent: #e8ff4a;
+      --accent2: #ff6b35;
+      --text: #f0f0f0;
+      --muted: #5a5a5a;
+      --muted2: #888;
+      --font-mono: 'Space Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .player {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    /* ── CAROUSEL ── */
+    .carousel {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      position: relative;
+      overflow: hidden;
+      background: #0f0f0f;
+      flex-shrink: 0;
+    }
+
+    .carousel-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 1.4s ease;
+    }
+
+    .carousel-img.active { opacity: 1; }
+
+    .carousel-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.75) 100%);
+      z-index: 1;
+    }
+
+    .carousel-dots {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 2;
+    }
+
+    .carousel-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      transition: all 0.35s ease;
+    }
+
+    .carousel-dot.active {
+      background: var(--accent);
+      width: 20px;
+      border-radius: 3px;
+    }
+
+    .carousel-timer-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      width: 0%;
+      background: var(--accent);
+      z-index: 3;
+    }
+
+    .carousel-timer-bar.running {
+      animation: timerRun 30s linear forwards;
+    }
+
+    @keyframes timerRun {
+      from { width: 0%; }
+      to   { width: 100%; }
+    }
+
+    /* ── STATUS BAR ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+
+    .status-dot.playing { background: var(--accent); animation: pulse 1.4s ease infinite; }
+    .status-dot.loading { background: var(--accent2); animation: pulse 0.7s ease infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .status-text {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted2);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .load-bar {
+      height: 2px;
+      background: var(--border);
+    }
+
+    .load-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent2);
+      opacity: 0.5;
+      transition: width 0.4s ease;
+    }
+
+    /* ── TRACK INFO ── */
+    .track-info {
+      padding: 14px 16px 10px;
+      background: var(--surface);
+    }
+
+    .track-id {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .track-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .track-meta {
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 3px;
+      font-weight: 300;
+    }
+
+    /* ── ANCHORS ── */
+    .anchors-section {
+      padding: 10px 16px 12px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .anchors-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .anchor-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 11px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      text-align: left;
+      color: var(--text);
+      width: 100%;
+      font-family: var(--font-body);
+    }
+
+    .anchor-btn:hover {
+      border-color: var(--border2);
+      background: #222;
+    }
+
+    .anchor-btn.active {
+      border-color: var(--accent);
+      background: rgba(232,255,74,0.06);
+    }
+
+    .anchor-btn.active .anchor-time { color: var(--accent); }
+
+    .anchor-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted2);
+      min-width: 46px;
+      transition: color 0.2s;
+    }
+
+    .anchor-name {
+      font-size: 12px;
+      color: var(--text);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .anchor-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted2);
+      white-space: nowrap;
+    }
+
+    .anchor-btn.active .anchor-tag {
+      background: rgba(232,255,74,0.1);
+      color: var(--accent);
+    }
+
+    /* ── PROGRESS ── */
+    .progress-section {
+      padding: 14px 16px 4px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted2);
+      margin-bottom: 10px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .progress-track:hover .progress-thumb { transform: translate(-50%, -50%) scale(1.4); }
+
+    .progress-buffered {
+      position: absolute;
+      inset: 0;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.08);
+      width: 0%;
+      pointer-events: none;
+    }
+
+    .progress-fill {
+      position: absolute;
+      inset: 0;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      width: 0%;
+      pointer-events: none;
+      transition: width 0.8s linear;
+    }
+
+    .progress-thumb {
+      position: absolute;
+      top: 50%;
+      left: 0%;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--accent);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: left 0.8s linear, transform 0.2s;
+      box-shadow: 0 0 0 3px rgba(232,255,74,0.15);
+    }
+
+    .anchor-markers-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .anchor-mark {
+      position: absolute;
+      top: -3px;
+      width: 2px;
+      height: 10px;
+      background: var(--accent2);
+      border-radius: 1px;
+      opacity: 0.55;
+      transform: translateX(-50%);
+    }
+
+    /* ── CONTROLS ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 14px;
+      background: var(--surface);
+    }
+
+    .ctrl-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.15s;
+      font-size: 17px;
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+    }
+
+    .ctrl-btn:hover { border-color: var(--border2); background: #252525; }
+    .ctrl-btn:active { transform: scale(0.93); }
+
+    .ctrl-btn.sm { width: 36px; height: 36px; font-size: 14px; }
+
+    .play-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-size: 22px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      flex-shrink: 0;
+    }
+
+    .play-btn:hover { background: #d8ef3a; }
+    .play-btn:active { transform: scale(0.94); }
+
+    /* ── VOLUME ── */
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px 18px;
+      background: var(--surface);
+    }
+
+    .vol-icon { font-size: 16px; color: var(--muted); }
+
+    input[type=range].vol-slider {
+      flex: 1;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type=range].vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--text);
+      cursor: pointer;
+      border: none;
+    }
+
+    input[type=range].vol-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--text);
+      cursor: pointer;
+      border: none;
+    }
+
+    /* ── NOT FOUND STATE ── */
+    .not-found {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 16px;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .not-found i { font-size: 48px; color: var(--muted); }
+    .not-found h2 { font-size: 16px; font-weight: 500; color: var(--text); }
+    .not-found p { font-size: 13px; color: var(--muted2); line-height: 1.6; }
+    .not-found code { font-family: var(--font-mono); font-size: 11px; color: var(--accent); background: rgba(232,255,74,0.08); padding: 2px 6px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="player" id="playerUI">
+
+  <!-- CAROUSEL -->
+  <div class="carousel" id="carousel">
+    <div class="carousel-overlay"></div>
+    <div class="carousel-dots" id="carouselDots"></div>
+    <div class="carousel-timer-bar" id="carTimerBar"></div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">PRÊT · APPUYEZ SUR PLAY</span>
+  </div>
+
+  <!-- TRACK INFO -->
+  <div class="track-info">
+    <div class="track-id" id="trackId">NFC-00</div>
+    <div class="track-title" id="trackTitle">—</div>
+    <div class="track-meta" id="trackMeta">—</div>
+  </div>
+
+  <!-- ANCHORS -->
+  <div class="anchors-section">
+    <div class="section-label">Ancres</div>
+    <div class="anchors-list" id="anchorsList"></div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-section">
+    <div class="time-row">
+      <span id="timeCurrent">0:00:00</span>
+      <span id="timeDuration">—:——:——</span>
+    </div>
+    <div class="progress-track" id="progressTrack">
+      <div class="progress-buffered" id="progressBuffered"></div>
+      <div class="progress-fill" id="progressFill"></div>
+      <div class="progress-thumb" id="progressThumb"></div>
+      <div class="anchor-markers-layer" id="anchorMarkers"></div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="ctrl-btn sm" id="btnPrev" aria-label="Ancre précédente"><i class="ti ti-skip-back" aria-hidden="true"></i></button>
+    <button class="ctrl-btn" id="btnRewind" aria-label="Reculer 30s"><i class="ti ti-rotate-clockwise-2" style="transform:scaleX(-1)" aria-hidden="true"></i></button>
+    <button class="play-btn" id="btnPlay" aria-label="Lecture / Pause"><i class="ti ti-player-play" id="playIcon" aria-hidden="true"></i></button>
+    <button class="ctrl-btn" id="btnForward" aria-label="Avancer 30s"><i class="ti ti-rotate-clockwise-2" aria-hidden="true"></i></button>
+    <button class="ctrl-btn sm" id="btnNext" aria-label="Ancre suivante"><i class="ti ti-skip-forward" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="volume-row">
+    <i class="ti ti-volume vol-icon" aria-hidden="true"></i>
+    <input type="range" class="vol-slider" id="volSlider" min="0" max="1" step="0.01" value="0.85" aria-label="Volume">
+    <i class="ti ti-volume-3 vol-icon" aria-hidden="true"></i>
+  </div>
+
+</div>
+
+<!-- NOT FOUND STATE -->
+<div class="not-found" id="notFound">
+  <i class="ti ti-wifi-off" aria-hidden="true"></i>
+  <h2>Piste introuvable</h2>
+  <p>Aucune piste ne correspond à l'identifiant <code id="notFoundId">—</code>.<br>Vérifiez la configuration dans <code>config.js</code>.</p>
+</div>
+
+<!-- AUDIO ENGINE -->
+<audio id="audioEl" preload="metadata" crossorigin="anonymous"></audio>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONFIG — à modifier pour chaque piste / puce NFC
+   Chaque clé correspond à ?id=XX dans l'URL de la puce NFC
+═══════════════════════════════════════════════════════════ */
+const TRACKS = {
+
+  "01": {
+    id: "NFC-01",
+    title: "Fred Again.. USB 002 — New York 1",
+    meta: "Fred Again.. b2b Romy b2b HAAi · 16 Jan 2026",
+    audioUrl: "https://archive.org/download/fred-again..-usb-002-tour-new-york-1/Fred%20Again..%20USB%20002%20Tour%20-%20New%20York%201.mp3",
+    images: [
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=900&q=85",
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=900&q=85",
+      "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=900&q=85",
+      "https://images.unsplash.com/photo-1598387993441-a364f854cfbd?w=900&q=85",
+      "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=900&q=85",
+      "https://images.unsplash.com/photo-1504680177321-2e6a879aac86?w=900&q=85"
+    ],
+    anchors: [
+      { time: 0,     label: "Fred b2b Romy b2b HAAi",  tag: "PART 1"  },
+      { time: 1800,  label: "Intro drop",               tag: "MOMENT"  },
+      { time: 3600,  label: "Transition club",           tag: "MIX"     },
+      { time: 5400,  label: "B2B peak",                  tag: "PEAK"    },
+      { time: 7140,  label: "Fred solo",                 tag: "PART 2"  },
+      { time: 9000,  label: "Montée émotionnelle",       tag: "MOMENT"  },
+      { time: 10800, label: "Breakdown central",         tag: "MIX"     },
+      { time: 12600, label: "Finale b2b",                tag: "PART 3"  },
+      { time: 14256, label: "Fred b2b Romy — reprise",   tag: "REPRISE" },
+      { time: 16200, label: "Closing set",               tag: "OUTRO"   }
+    ]
+  },
+
+  /* ── EXEMPLE piste 02 — à dupliquer et compléter ── */
+  "02": {
+    id: "NFC-02",
+    title: "Titre de la piste 02",
+    meta: "Artiste · Date",
+    audioUrl: "https://archive.org/download/YOUR-IDENTIFIER/YOUR-FILE.mp3",
+    images: [
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=900&q=85"
+    ],
+    anchors: [
+      { time: 0,    label: "Début",   tag: "INTRO" },
+      { time: 1800, label: "Milieu",  tag: "MID"   },
+      { time: 3600, label: "Fin",     tag: "OUTRO" }
+    ]
+  }
+
+  /* Continuez jusqu'à "20" en suivant la même structure */
+};
+
+/* ═══════════════════════════════════════════════════════════
+   LECTEUR
+═══════════════════════════════════════════════════════════ */
+const audio     = document.getElementById('audioEl');
+const btnPlay   = document.getElementById('btnPlay');
+const playIcon  = document.getElementById('playIcon');
+const statusDot = document.getElementById('statusDot');
+const statusTxt = document.getElementById('statusText');
+const loadFill  = document.getElementById('loadFill');
+
+let isPlaying      = false;
+let currentAnchor  = 0;
+let track          = null;
+let carIdx         = 0;
+let carIntervalId  = null;
+
+/* ── Lecture de l'ID dans l'URL ── */
+function getTrackId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id') || '01';
+}
+
+/* ── Initialisation ── */
+function init() {
+  const id = getTrackId();
+  track = TRACKS[id];
+
+  if (!track) {
+    document.getElementById('playerUI').style.display  = 'none';
+    document.getElementById('notFound').style.display  = 'flex';
+    document.getElementById('notFoundId').textContent  = id;
+    return;
+  }
+
+  document.title = track.title;
+  document.getElementById('trackId').textContent    = track.id;
+  document.getElementById('trackTitle').textContent = track.title;
+  document.getElementById('trackMeta').textContent  = track.meta;
+  audio.volume = 0.85;
+
+  buildCarousel();
+  buildAnchors();
+
+  btnPlay.addEventListener('click', togglePlay);
+  document.getElementById('btnPrev').addEventListener('click', prevAnchor);
+  document.getElementById('btnNext').addEventListener('click', nextAnchor);
+  document.getElementById('btnRewind').addEventListener('click', () => { audio.currentTime = Math.max(0, audio.currentTime - 30); });
+  document.getElementById('btnForward').addEventListener('click', () => { if (audio.duration) audio.currentTime = Math.min(audio.duration, audio.currentTime + 30); });
+  document.getElementById('progressTrack').addEventListener('click', seekByClick);
+  document.getElementById('volSlider').addEventListener('input', e => { audio.volume = parseFloat(e.target.value); });
+
+  audio.addEventListener('loadedmetadata', onMeta);
+  audio.addEventListener('timeupdate', onTimeUpdate);
+  audio.addEventListener('progress', onProgress);
+  audio.addEventListener('playing', () => setStatus('EN LECTURE', 'playing'));
+  audio.addEventListener('waiting', () => setStatus('TAMPON…', 'loading'));
+  audio.addEventListener('pause',   () => setStatus('PAUSE', ''));
+  audio.addEventListener('ended',   () => { isPlaying = false; playIcon.className = 'ti ti-player-play'; setStatus('FIN', ''); });
+}
+
+/* ── Carousel ── */
+function buildCarousel() {
+  const carousel = document.getElementById('carousel');
+  const dots     = document.getElementById('carouselDots');
+  const overlay  = carousel.querySelector('.carousel-overlay');
+  const timerBar = document.getElementById('carTimerBar');
+
+  track.images.forEach((src, i) => {
+    const img = document.createElement('img');
+    img.className   = 'carousel-img' + (i === 0 ? ' active' : '');
+    img.src         = src;
+    img.alt         = '';
+    img.crossOrigin = 'anonymous';
+    carousel.insertBefore(img, overlay);
+
+    const dot = document.createElement('div');
+    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+    dots.appendChild(dot);
+  });
+
+  startCarouselTimer();
+}
+
+function startCarouselTimer() {
+  const bar = document.getElementById('carTimerBar');
+  bar.classList.remove('running');
+  bar.style.animation = 'none';
+  void bar.offsetWidth;
+  bar.style.animation = '';
+  bar.classList.add('running');
+
+  clearTimeout(carIntervalId);
+  carIntervalId = setTimeout(advanceCarousel, 30000);
+}
+
+function advanceCarousel() {
+  const imgs = document.querySelectorAll('.carousel-img');
+  const dots = document.querySelectorAll('.carousel-dot');
+  if (!imgs.length) return;
+  imgs[carIdx].classList.remove('active');
+  dots[carIdx].classList.remove('active');
+  carIdx = (carIdx + 1) % imgs.length;
+  imgs[carIdx].classList.add('active');
+  dots[carIdx].classList.add('active');
+  startCarouselTimer();
+}
+
+/* ── Ancres ── */
+function buildAnchors() {
+  const list    = document.getElementById('anchorsList');
+  const markers = document.getElementById('anchorMarkers');
+  const dur     = audio.duration || 14400;
+
+  list.innerHTML    = '';
+  markers.innerHTML = '';
+
+  track.anchors.forEach((a, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'anchor-btn' + (i === 0 ? ' active' : '');
+    btn.setAttribute('aria-label', `Aller à ${a.label} — ${formatTime(a.time)}`);
+    btn.innerHTML = `
+      <span class="anchor-time">${formatTime(a.time)}</span>
+      <span class="anchor-name">${a.label}</span>
+      <span class="anchor-tag">${a.tag}</span>
+    `;
+    btn.addEventListener('click', () => seekToAnchor(i));
+    list.appendChild(btn);
+
+    const mark = document.createElement('div');
+    mark.className   = 'anchor-mark';
+    mark.style.left  = ((a.time / dur) * 100) + '%';
+    mark.title       = a.label;
+    markers.appendChild(mark);
+  });
+}
+
+function rebuildMarkers() {
+  const markers = document.getElementById('anchorMarkers');
+  markers.innerHTML = '';
+  track.anchors.forEach(a => {
+    const mark = document.createElement('div');
+    mark.className  = 'anchor-mark';
+    mark.style.left = ((a.time / audio.duration) * 100) + '%';
+    markers.appendChild(mark);
+  });
+}
+
+function seekToAnchor(idx) {
+  currentAnchor = idx;
+  audio.currentTime = track.anchors[idx].time;
+  updateActiveAnchor();
+  if (!isPlaying) togglePlay();
+}
+
+function prevAnchor() {
+  const idx = Math.max(0, liveAnchorIdx() - 1);
+  seekToAnchor(idx);
+}
+
+function nextAnchor() {
+  const idx = Math.min(track.anchors.length - 1, liveAnchorIdx() + 1);
+  seekToAnchor(idx);
+}
+
+function liveAnchorIdx() {
+  const t = audio.currentTime;
+  let idx = 0;
+  track.anchors.forEach((a, i) => { if (t >= a.time) idx = i; });
+  return idx;
+}
+
+function updateActiveAnchor() {
+  const ai  = liveAnchorIdx();
+  document.querySelectorAll('.anchor-btn').forEach((b, i) => b.classList.toggle('active', i === ai));
+}
+
+/* ── Lecture ── */
+function togglePlay() {
+  if (isPlaying) {
+    audio.pause();
+    playIcon.className = 'ti ti-player-play';
+    isPlaying = false;
+  } else {
+    if (!audio.src) {
+      audio.src = track.audioUrl;
+      setStatus('CHARGEMENT…', 'loading');
+    }
+    audio.play().catch(() => setStatus('ERREUR · vérifiez la connexion', ''));
+    playIcon.className = 'ti ti-player-pause';
+    isPlaying = true;
+  }
+}
+
+/* ── Events audio ── */
+function onMeta() {
+  document.getElementById('timeDuration').textContent = formatTime(audio.duration);
+  rebuildMarkers();
+}
+
+function onTimeUpdate() {
+  const t   = audio.currentTime;
+  const dur = audio.duration || 1;
+  const pct = (t / dur) * 100;
+
+  document.getElementById('timeCurrent').textContent  = formatTime(t);
+  document.getElementById('progressFill').style.width  = pct + '%';
+  document.getElementById('progressThumb').style.left  = pct + '%';
+
+  const ai = liveAnchorIdx();
+  if (ai !== currentAnchor) { currentAnchor = ai; updateActiveAnchor(); }
+}
+
+function onProgress() {
+  if (audio.buffered.length && audio.duration) {
+    const buffPct = (audio.buffered.end(audio.buffered.length - 1) / audio.duration) * 100;
+    loadFill.style.width                                    = Math.min(buffPct, 100) + '%';
+    document.getElementById('progressBuffered').style.width = Math.min(buffPct, 100) + '%';
+  }
+}
+
+function seekByClick(e) {
+  if (!audio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+}
+
+/* ── Helpers ── */
+function setStatus(msg, state) {
+  statusTxt.textContent  = msg;
+  statusDot.className    = 'status-dot' + (state ? ' ' + state : '');
+}
+
+function formatTime(s) {
+  s = Math.floor(s);
+  const h   = Math.floor(s / 3600);
+  const m   = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+/* ── Go ── */
+init();
+</script>
+</body>
+</html>
 
