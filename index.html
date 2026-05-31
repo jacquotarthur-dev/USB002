@@ -398,6 +398,51 @@
     .not-found h2 { font-size: 16px; font-weight: 500; color: var(--text); }
     .not-found p { font-size: 13px; color: var(--muted2); line-height: 1.6; }
     .not-found code { font-family: var(--font-mono); font-size: 11px; color: var(--accent); background: rgba(232,255,74,0.08); padding: 2px 6px; border-radius: 3px; }
+
+@media (min-width: 768px) {
+  body {
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .player {
+    flex-direction: row;
+    max-width: 960px;
+    min-height: auto;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  }
+
+  /* Colonne gauche — carousel */
+  .carousel {
+    width: 420px;
+    min-width: 420px;
+    aspect-ratio: unset;
+    align-self: stretch;
+  }
+
+  /* Colonne droite — tout le reste */
+  .track-info,
+  .anchors-section,
+  .progress-section,
+  .controls,
+  .status-bar {
+    flex-shrink: 0;
+  }
+
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+}
+
+    
   </style>
 </head>
 <body>
@@ -411,7 +456,7 @@
     <div class="carousel-timer-bar" id="carTimerBar"></div>
   </div>
 
-
+  <div class="right-col">
   <!-- STATUS -->
   <div class="status-bar">
     <div class="status-dot" id="statusDot"></div>
@@ -451,6 +496,7 @@
     <button class="ctrl-btn" id="btnForward" aria-label="Avancer 30s"><i class="ti ti-rotate-clockwise-2" aria-hidden="true"></i></button>
     <button class="ctrl-btn sm" id="btnNext" aria-label="Ancre suivante"><i class="ti ti-chevron-right" aria-hidden="true"></i><i class="ti ti-layout-list" aria-hidden="true"></i></button>
   </div>
+  </div>   
 
 
 
