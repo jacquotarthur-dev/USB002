@@ -191,6 +191,20 @@
   flex: 1;
   min-height: 0;
 }
+.anchors-section::-webkit-scrollbar {
+  width: 4px;
+}
+.anchors-section::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+.anchors-section::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 2px;
+}
+.anchors-section::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+    
 
 
     .anchors-list {
@@ -411,14 +425,20 @@
     padding: 2rem;
   }
 
-  .player {
-    flex-direction: row;
-    max-width: 960px;
-    min-height: auto;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
-  }
+.player {
+  flex-direction: row;
+  max-width: 960px;
+  min-height: auto;
+  max-height: 80vh;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+}
+
+  .right-col {
+  height: 100%;
+  overflow: hidden;
+}
 
   /* Colonne gauche — carousel */
   .carousel {
