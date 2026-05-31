@@ -526,6 +526,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Glasgow",
     meta: "Fred Again.. , Rick Salad, HAAI, ¥ØU$UK€ ¥UK1MAT$U, Blanco · 03 Oct 2025",
     accent: "#05478c",
+    duration: 17280,
     audioUrl: "https://dn711402.ca.archive.org/0/items/fred-again..-usb-002-tour-glasgow_202605/Fred%20Again..%20USB%20002%20Tour%20-%20Glasgow.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Glasgow/1.webp",
@@ -554,6 +555,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Brussels",
     meta: "Fred Again.. , DC Noises, SHOPLIFTER, KOMA, LAURAVIOLI · 10 Oct 2025",
     accent: "#fe7443",
+    duration: 20220,
     audioUrl: "https://dn710909.ca.archive.org/0/items/fred-again..-usb-002-tour-brussels/Fred%20Again..%20USB%20002%20Tour%20-%20Brussels.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Brussels/1.webp",
@@ -577,6 +579,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Madrid",
     meta: "Fred Again.. , DREA, Skin On Skin, Toccororo · 17 Oct 2025",
     accent: "#f24d99",
+    duration: 26700,
     audioUrl: "https://dn710406.ca.archive.org/0/items/fred-again..-usb-002-tour-madrid_202605/Fred%20Again..%20USB%20002%20Tour%20-%20Madrid.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Madrid/1.webp",
@@ -603,6 +606,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Lyon",
     meta: "Fred Again.. ,Caribou , Floating Points · 24 Oct 2025",
     accent: "#1e73d4",
+    duration: 17820,
     audioUrl: "https://archive.org/download/fred-again..-usb-002-tour-lyon/Fred%20Again..%20USB%20002%20Tour%20-%20Lyon.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Lyon/1.webp",
@@ -625,6 +629,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Dublin",
     meta: "Fred Again.. , Caolan Ryan, EMA, FDC DJs, Shady Nasty, Travy, Elzzz, Reggie, Amyl · 01 Nov 2025",
     accent: "#307e54",
+    duration: 19020,
     audioUrl: "https://dn711107.ca.archive.org/0/items/fred-again..-usb-002-tour-dublin/Fred%20Again..%20USB%20002%20Tour%20-%20Dublin.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Dublin/1.webp",
@@ -652,6 +657,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Toronto 1",
     meta: "Fred Again.. , Brat Star, FROSSYOUTH, Loukeman · 14 Nov 2025",
     accent: "#e54345",
+    duration: 19980,
     audioUrl: "https://dn711507.ca.archive.org/0/items/fred-again..-usb-002-tour-toronto-1/Fred%20Again..%20USB%20002%20Tour%20-%20Toronto%201.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Toronto1/1.webp",
@@ -678,6 +684,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Toronto 2",
     meta: "Fred Again.. , Four Tet · 15 Nov 2025",
     accent: "#1aada2",
+    duration: 16260,
     audioUrl: "https://ia601608.us.archive.org/6/items/fred-again..-usb-002-tour-toronto-2/Fred%20Again..%20USB%20002%20Tour%20-%20Toronto%202.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Toronto2/1.webp",
@@ -700,6 +707,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Chicago",
     meta: "Fred Again.., Sammy Virji · 21 Nov 2025",
     accent: "#893b83",
+    duration: 17640,
     audioUrl: "https://dn710106.ca.archive.org/0/items/fred-again..-usb-002-tour-chicago/Fred%20Again..%20USB%20002%20Tour%20-%20Chicago.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Chicago/1.webp",
@@ -725,6 +733,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — Vancouver",
     meta: "Fred again.. , Lou Nour, Skream, Benga · 28 Nov 2025",
     accent: "#5e7b98",
+    duration: 21900,
     audioUrl: "https://dn711409.ca.archive.org/0/items/fred-again..-usb-002-tour-vancouver/Fred%20Again..%20USB%20002%20Tour%20-%20Vancouver.mp3",
     images: [
      "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20Vancouver/1.webp",
@@ -750,6 +759,7 @@ const TRACKS = {
     title: "Fred Again.. USB 002 — San Francisco",
     meta: "Fred Again.., Bad juuju, Clearcast, Vertigo, Oppidan, Hamdi · 05 Dec 2025",
     accent: "#d32483",
+    duration: 23160,
     audioUrl: "https://dn711205.ca.archive.org/0/items/fred-again..-usb-002-tour-san-francisco/Fred%20Again..%20USB%20002%20Tour%20-%20San%20Francisco.mp3",
     images: [
       "https://raw.githubusercontent.com/jacquotarthur-dev/USB002/refs/heads/main/Galerie%20San%20Francisco/1.webp",
@@ -939,7 +949,7 @@ function advanceCarousel() {
 function buildAnchors() {
   const list    = document.getElementById('anchorsList');
   const markers = document.getElementById('anchorMarkers');
-  const dur     = audio.duration || 14400;
+  const dur = track.duration || audio.duration || 14400;
 
   list.innerHTML    = '';
   markers.innerHTML = '';
