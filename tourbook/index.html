@@ -1,0 +1,1278 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USB002 TourBook</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+:root {
+  --book-w:     900px;
+  --book-h:     580px;
+  --sticker-sz: 10%;
+  --sticker-mg-top:    7%;  /* ← ajuste cette valeur pour haut */
+  --sticker-mg-bottom: 7%;  /* ← ajuste cette valeur pour bas */
+  --sticker-mg-side:   4%;
+}
+ 
+* { cursor: none !important; }
+ 
+body {
+  background: #181818;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  letter-spacing: -0.03em;
+  color: #e8e8e8;
+  overflow: hidden;
+  height: 100vh; width: 100vw;
+  user-select: none;
+}
+ 
+/* CURSOR */
+#cursor {
+  position: fixed;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid #000;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+ 
+/* LOADER */
+#loader {
+  position: fixed; inset: 0;
+  background: #111;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 400;
+  transition: opacity 0.5s ease;
+}
+#loader.done { opacity: 0; pointer-events: none; }
+.loader-ring {
+  width: 32px; height: 32px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-top-color: rgba(255,255,255,0.55);
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+ 
+/* =============================================
+   INTRO / OUTRO SHARED STYLES
+============================================= */
+#intro-scene, #outro-scene {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100;
+  transition: opacity 0.7s ease, visibility 0.7s ease;
+}
+#intro-scene {
+  background: radial-gradient(ellipse at 38% 38%, #2a2a2a 0%, #141414 65%);
+}
+#outro-scene {
+  /* Mirror gradient: light comes from the right for back cover */
+  background: radial-gradient(ellipse at 38% 38%, #2a2a2a 0%, #141414 65%);
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+
+/* Outro cursor light — visible ONLY inside the opaque pixels of cover-back.png */
+#outroReflect {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+
+  background: transparent;
+  transition: background 0.06s linear;
+
+  /* Utilise l'alpha du PNG comme masque */
+
+
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  -webkit-mask-position: center;
+  mask-position: center;
+
+  -webkit-mask-size: cover;
+  mask-size: cover;
+}
+
+#intro-scene.hidden  { opacity: 0; visibility: hidden; pointer-events: none; }
+#outro-scene.visible { opacity: 1; visibility: visible; pointer-events: all; }
+ 
+.intro-light { position: absolute; pointer-events: none; border-radius: 50%; }
+.intro-light.tl {
+  top: -20%; left: -10%; width: 60vw; height: 70vh;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.045) 0%, transparent 70%);
+}
+.intro-light.br {
+  bottom: -15%; right: -5%; width: 35vw; height: 45vh;
+  background: radial-gradient(ellipse, rgba(180,180,180,0.02) 0%, transparent 65%);
+}
+/* Outro: mirror lights */
+.outro-light { position: absolute; pointer-events: none; border-radius: 50%; }
+.outro-light.tl {
+  top: -20%; left: -10%; width: 60vw; height: 70vh;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.045) 0%, transparent 70%);
+}
+.outro-light.br {
+  bottom: -15%; right: -5%; width: 35vw; height: 45vh;
+  background: radial-gradient(ellipse, rgba(180,180,180,0.02) 0%, transparent 65%);
+}
+ 
+.closed-book-scene { perspective: 2000px; }
+ 
+@keyframes floatIdle {
+  0%,100% { transform: translateY(0px) rotateZ(0deg); }
+  33%      { transform: translateY(-4px) rotateZ(0.15deg); }
+  66%      { transform: translateY(-2px) rotateZ(-0.1deg); }
+}
+ 
+.closed-book-3d {
+  position: relative;
+  width:  calc((var(--book-w) / var(--book-h)) * 80vh / 2);
+  height: 80vh;
+  transform-style: preserve-3d;
+  will-change: transform;
+  animation: floatIdle 5s ease-in-out infinite;
+}
+.closed-book-3d.is-hovered { animation: none; }
+ 
+/* INTRO book: spine on the LEFT (book opens to the right) */
+#closedBook3D { transform: rotateY(-22deg) rotateX(6deg); }
+/* OUTRO book: mirrored, spine on the RIGHT */
+#outroBook3D  { transform: rotateY(22deg) rotateX(6deg); }
+ 
+.book-face-front {
+  position: absolute; inset: 0;
+  background: #090909;
+  border-radius: 1px 4px 4px 1px;
+  overflow: hidden;
+}
+.cover-mat-layer { position: absolute; inset: 0; background: #0a0a0a; z-index: 1; }
+.cover-png-layer {
+  position: absolute; inset: 0; z-index: 2;
+  mix-blend-mode: screen; opacity: 0.9;
+}
+.cover-png-layer img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-reflect-layer {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.02) 30%,
+    transparent 60%);
+}
+ 
+
+/* ==========================================================
+   OUTRO — LUMIÈRE DU CURSEUR DÉCOUPÉE PAR L'ALPHA DU PNG
+   ========================================================== */
+
+#introLightCanvas,
+#outroLightCanvas {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  z-index: 3;
+  pointer-events: none;
+
+  display: block;
+}
+
+
+
+/* Spine 1 */
+.book-spine1-3d {
+  position: absolute;
+  right: 0; top: 0;
+  width: 1.7vw; height: 80vh;
+  background: linear-gradient(to right, #e4e4e4, #dfdede, #dadada);
+  transform: rotateY(-90deg);
+  transform-origin: right center;
+  border-radius: 2px 0 0 2px;
+  overflow: hidden;
+}
+
+
+/* Spine 2 */
+.book-spine2-3d {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 100%; height: 4vh;
+  background: linear-gradient(to right, #e4e4e4, #dfdede, #dadada);
+  transform: rotateX(90deg);
+  transform-origin: bottom center;
+  border-radius: 2px 0 0 2px;
+  overflow: hidden;
+
+}
+
+/* Spine 3 */
+.book-spine3-3d {
+  position: absolute;
+  right: 0; top: 0;
+  width: 1.7vw; height: 80vh;
+  background: linear-gradient(to right, #e4e4e4, #dfdede, #dadada);
+  transform: rotateY(-90deg);
+  transform-origin: right center;
+  border-radius: 2px 0 0 2px;
+  overflow: hidden;
+}
+
+
+ 
+.intro-cta {
+  margin-top: 32px; font-size: 0.68rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.38);
+  animation: blink 2.8s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:0.22} 50%{opacity:0.55} }
+.intro-title {
+  margin-top: 8px; font-size: 0.72rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.15);
+}
+ 
+/* =============================================
+   MAIN SCENE
+============================================= */
+#main-scene {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.8s ease 0.1s, visibility 0.8s ease 0.1s;
+  background: radial-gradient(ellipse at 40% 30%, #282828 0%, #141414 70%);
+}
+#main-scene.visible { opacity: 1; visibility: visible; }
+ 
+.scene-ambient { position: fixed; pointer-events: none; border-radius: 50%; }
+.scene-ambient.l1 {
+  top: -25%; left: -15%; width: 75vw; height: 85vh;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.055) 0%, transparent 65%);
+}
+.scene-ambient.l2 {
+  bottom: -20%; right: -10%; width: 55vw; height: 65vh;
+  background: radial-gradient(ellipse, rgba(200,200,200,0.022) 0%, transparent 65%);
+}
+ 
+/* =============================================
+   BOOK VIEWER
+============================================= */
+.book-viewer {
+  position: relative;
+  height: 80vh;
+  width: calc((var(--book-w) / var(--book-h)) * 80vh);
+}
+/* Shadow under open book — no hard edge */
+.book-viewer::after {
+  content: '';
+  position: absolute;
+  bottom: -40px; left: 10%;
+  width: 80%; height: 50px;
+
+  pointer-events: none; z-index: 0;
+}
+ 
+.book-border {
+  position: absolute; inset: -3px;
+  border: 6px solid #141414;
+  border-radius: 1px;
+  pointer-events: none; z-index: 25;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 0 0 1px rgba(0,0,0,0.8);
+}
+
+.spine-pages-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.backspine-pages-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.spine-pages-img-bottom {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 45px;    /* prend la hauteur comme largeur après rotation */
+  height: 100vh;    /* reste la même hauteur */
+  object-fit: cover;
+  object-position: left center;
+  transform: translate(-50%, -50%) rotate(90deg);
+  display: block;
+}
+ 
+/* =============================================
+   FLIP BOOK — pages
+============================================= */
+/*
+  KEY CHANGE for the flip animation:
+  .flip-book no longer has overflow:hidden.
+  The clipper wraps only the static pages.
+  The turner lives OUTSIDE the clipper so it can
+  visually extend beyond the book boundary during rotation.
+*/
+.flip-book {
+  position: absolute; inset: 0;
+  display: flex;
+}
+/* Static pages are clipped to the book boundary */
+.pages-clipper {
+  position: absolute; inset: 0;
+  display: flex;
+  overflow: hidden; /* clips left+right pages only */
+}
+ 
+.page-left, .page-right {
+  position: relative;
+  width: 50%; height: 100%;
+  overflow: hidden; flex-shrink: 0;
+}
+/* Remove heavy inset shadow that creates the dark band at bottom */
+.page-left  {
+  border-right: 1px solid rgba(0,0,0,0.6);
+  box-shadow: inset -4px 0 10px rgba(0,0,0,0.4);
+}
+.page-right {
+  border-left: 1px solid rgba(0,0,0,0.35);
+  box-shadow: inset  4px 0 10px rgba(0,0,0,0.28);
+}
+ 
+.spread-bg {
+  position: absolute; inset: 0;
+  background-repeat: no-repeat;
+  background-size: 200% 100%;
+}
+.page-left  .spread-bg { background-position: left center; }
+.page-right .spread-bg { background-position: right center; }
+ 
+.cover-mat-bg { position: absolute; inset: 0; background: #090909; z-index: 1; }
+.cover-png-blend { position: absolute; inset: 0; z-index: 2; mix-blend-mode: screen; opacity: 0.9; }
+.cover-png-blend img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-reflect-main { position: absolute; inset: 0; z-index: 3; pointer-events: none; transition: background 0.06s linear; }
+ 
+.page-placeholder {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #111; z-index: 0;
+}
+.page-placeholder span {
+  font-size: 0.55rem; letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.07); text-transform: uppercase;
+}
+ 
+/* =============================================
+   PAGE TURNER
+   Lives outside pages-clipper so it CAN overflow
+   the book boundary during the 3D rotation.
+   This makes the page visibly "come off" the book.
+============================================= */
+.page-turner {
+  position: absolute; top: 0;
+  width: 50%; height: 100%;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  z-index: 30; /* above book-border so we see the curl */
+}
+.turner-face, .turner-back {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+.turner-back {
+  transform: rotateY(180deg);
+  background: #0d0d0d;
+}
+.turner-face .spread-bg, .turner-back .spread-bg {
+  position: absolute; inset: 0;
+  background-repeat: no-repeat;
+  background-size: 200% 100%;
+}
+ 
+/* Shadow on turner face during curl */
+.turner-shadow {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 4;
+  opacity: 0;
+}
+.turner-face .turner-shadow {
+  background: linear-gradient(to left, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 35%, transparent 60%);
+  animation: tShadowFace 0.7s ease forwards;
+}
+.turner-back .turner-shadow {
+  background: linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.08) 35%, transparent 60%);
+  animation: tShadowBack 0.7s ease forwards;
+}
+@keyframes tShadowFace {
+  0%   { opacity: 0; }
+  25%  { opacity: 1; }
+  75%  { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+@keyframes tShadowBack {
+  0%   { opacity: 0; }
+  50%  { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+ 
+/* The actual 3D flip — perspective applied on turner itself via JS transform */
+@keyframes flipNextPage {
+  0%   { transform: perspective(2400px) rotateY(0deg)    translateZ(0px); }
+  15%  { transform: perspective(2400px) rotateY(-28deg)  translateZ(10px); }
+  40%  { transform: perspective(2400px) rotateY(-82deg)  translateZ(22px); }
+  60%  { transform: perspective(2400px) rotateY(-118deg) translateZ(16px); }
+  85%  { transform: perspective(2400px) rotateY(-162deg) translateZ(6px); }
+  100% { transform: perspective(2400px) rotateY(-180deg) translateZ(0px); }
+}
+@keyframes flipPrevPage {
+  0%   { transform: perspective(2400px) rotateY(0deg)   translateZ(0px); }
+  15%  { transform: perspective(2400px) rotateY(28deg)  translateZ(10px); }
+  40%  { transform: perspective(2400px) rotateY(82deg)  translateZ(22px); }
+  60%  { transform: perspective(2400px) rotateY(118deg) translateZ(16px); }
+  85%  { transform: perspective(2400px) rotateY(162deg) translateZ(6px); }
+  100% { transform: perspective(2400px) rotateY(180deg) translateZ(0px); }
+}
+ 
+/* =============================================
+   STICKERS
+============================================= */
+#stickerLayer {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 35;
+}
+#stickerLayer .sticker-btn { pointer-events: all; }
+.sticker-btn {
+  position: absolute;
+  width: var(--sticker-sz); aspect-ratio: 1;
+  display: block; border-radius: 50%; text-decoration: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.sticker-btn { opacity: 0; transition: transform 0.2s ease; }
+.sticker-btn:hover { opacity: 1; transform: scale(1.07); }
+.sticker-btn img {
+  width: 100%; height: 100%; object-fit: contain;
+  border-radius: 50%; display: block; pointer-events: none;
+}
+.sticker-top-left    { top: var(--sticker-mg-top);    left: var(--sticker-mg-side); }
+.sticker-bottom-left { bottom: var(--sticker-mg-bottom); left: var(--sticker-mg-side); }
+.sticker-top-right    { top: var(--sticker-mg-top);    right: var(--sticker-mg-side); }
+.sticker-bottom-right { bottom: var(--sticker-mg-bottom); right: var(--sticker-mg-side); }
+ 
+/* =============================================
+   NAV BAR
+============================================= */
+.nav-bar {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  z-index: 50;
+  background: rgba(16,16,16,0.65);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 40px;
+  padding: 7px 14px;
+}
+.nav-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.13);
+  background: transparent;
+  color: rgba(255,255,255,0.5); font-size: 0.8rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit; letter-spacing: -0.03em;
+}
+.nav-btn:hover  { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.35); color: #fff; }
+.nav-btn:active { transform: scale(0.91); }
+.nav-btn:disabled { opacity: 0.16; pointer-events: none; }
+.nav-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.09); flex-shrink: 0; }
+.page-counter {
+  font-size: 0.6rem; letter-spacing: 0.03em;
+  color: rgba(255,255,255,0.28);
+  min-width: 50px; text-align: center; font-family: inherit;
+}
+</style>
+</head>
+<body>
+ 
+<div id="cursor"></div>
+<div id="loader"><div class="loader-ring"></div></div>
+ 
+<!-- INTRO -->
+<div id="intro-scene">
+  <div class="intro-light tl"></div>
+  <div class="intro-light br"></div>
+  <div class="closed-book-scene" id="closedBookScene">
+    <div class="closed-book-3d" id="closedBook3D">
+      <div class="book-face-front">
+        <div class="cover-mat-layer"></div>
+        <div class="cover-png-layer">
+          <img src="cover-front.png" alt="" onerror="this.style.display='none'">
+        </div>
+        <canvas id="introLightCanvas"></canvas>
+      </div>
+  <div class="book-spine1-3d">
+  <img class="spine-pages-img" src="spine.png" alt="" onerror="this.style.display='none'">
+</div>
+<div class="book-spine2-3d">
+  <img class="spine-pages-img-bottom" src="spine.png" alt="" onerror="this.style.display='none'">
+</div>
+      <div class="book-floor-shadow"></div>
+    </div>
+  </div>
+  <p class="intro-cta">Click to open</p>
+  <p class="intro-title"></p>
+</div>
+ 
+<!-- OUTRO -->
+<div id="outro-scene">
+  <div class="outro-light tr"></div>
+  <div class="outro-light bl"></div>
+  <div class="closed-book-scene" id="outroBookScene">
+    <div class="closed-book-3d" id="outroBook3D">
+      <div class="book-face-front">
+        <div class="cover-mat-layer"></div>
+        <div class="cover-png-layer">
+          <img src="cover-back.png" alt="" onerror="this.style.display='none'">
+        </div>
+        <canvas id="outroLightCanvas"></canvas>
+      </div>
+<div class="book-spine2-3d">
+  <img class="spine-pages-img-bottom" src="spine.png" alt="" onerror="this.style.display='none'">
+</div>
+
+      <div class="book-spine3-3d">
+        <img class="backspine-pages-img" src="backspine.png"  alt="" onerror="this.style.display='none'">
+      </div>
+      <div class="book-floor-shadow"></div>
+    </div>
+  </div>
+  <p class="intro-cta">Click to go back</p>
+  <p class="intro-title"></p>
+</div>
+ 
+<!-- MAIN -->
+<div id="main-scene">
+  <div class="scene-ambient l1"></div>
+  <div class="scene-ambient l2"></div>
+ 
+  <div class="book-viewer" id="bookViewer">
+    <div class="book-border"></div>
+    <div class="flip-book" id="flipBook">
+ 
+      <!-- Static pages clipped to book boundary -->
+      <div class="pages-clipper">
+        <div class="page-left" id="pageLeft">
+          <div class="page-placeholder"><span id="leftLabel"></span></div>
+          <div class="spread-bg" id="leftBg"></div>
+          <div class="cover-mat-bg"      id="leftCoverMat"      style="display:none"></div>
+          <div class="cover-png-blend"   id="leftCoverPng"      style="display:none"><img id="leftCoverImg" src="" alt=""></div>
+          <div class="cover-reflect-main" id="leftCoverReflect" style="display:none"></div>
+        </div>
+        <div class="page-right" id="pageRight">
+          <div class="page-placeholder"><span id="rightLabel"></span></div>
+          <div class="spread-bg" id="rightBg"></div>
+          <div class="cover-mat-bg"      id="rightCoverMat"      style="display:none"></div>
+          <div class="cover-png-blend"   id="rightCoverPng"      style="display:none"><img id="rightCoverImg" src="" alt=""></div>
+          <div class="cover-reflect-main" id="rightCoverReflect" style="display:none"></div>
+        </div>
+      </div>
+ 
+      <!-- Turner lives OUTSIDE clipper — can overflow during 3D rotation -->
+      <div class="page-turner" id="pageTurner" style="display:none">
+        <div class="turner-face" id="turnerFace">
+          <div class="spread-bg" id="turnerFaceBg"></div>
+          <div class="turner-shadow"></div>
+        </div>
+        <div class="turner-back" id="turnerBack">
+          <div class="spread-bg" id="turnerBackBg"></div>
+          <div class="turner-shadow"></div>
+        </div>
+      </div>
+ 
+    </div>
+    <div id="stickerLayer"></div>
+  </div>
+ 
+  <nav class="nav-bar">
+    <button class="nav-btn" id="anchorPrev" title="Previous anchor">&#171;</button>
+    <button class="nav-btn" id="anchorNext" title="Next anchor">&#187;</button>
+    <div class="nav-sep"></div>
+    <button class="nav-btn" id="prevBtn" title="Previous page">&#8592;</button>
+    <span class="page-counter" id="pageCounter">1 / 24</span>
+    <button class="nav-btn" id="nextBtn" title="Next page">&#8594;</button>
+  </nav>
+</div>
+ 
+<script>
+/* ================================================================
+   CONFIG — EDIT HERE
+================================================================ */
+const STICKER_SRC     = 'sticker.png';
+const COVER_FRONT_PNG = 'cover-front.png';
+const COVER_BACK_PNG  = 'cover-back.png';
+// spread-02.jpg to spread-25.jpg (covers 01 and 26 handled by intro/outro)
+const SPREAD_IMAGES = Array.from({length:24}, (_,i) =>
+  `spread-${String(i+2).padStart(2,'0')}.png`
+);
+ 
+const SPREADS = [
+  // 0: id:2 — 1st interior double page, no sticker
+  {id:2,  ss:null,    sp:null,     su:null},
+  // 1–11: id:3–13 — left stickers
+  {id:3,  ss:'left',  sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=glasgow'},
+  {id:4,  ss:'left',  sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=brussels'},
+  {id:5,  ss:'left',  sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=madrid'},
+  {id:6,  ss:'left',  sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=lyon'},
+  {id:7,  ss:'left',  sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=dublin'},
+  {id:8,  ss:'left',  sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=toronto1'},
+  {id:9,  ss:'left',  sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=toronto2'},
+  {id:10, ss:'left',  sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=chicago'},
+  {id:11, ss:'left',  sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=vancouver'},
+  {id:12, ss:'left',  sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=sanfran'},
+  {id:13, ss:'left',  sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=mexico'},
+  // 12: id:14 — central page, no sticker
+  {id:14, ss:null,    sp:null,     su:null},
+  // 13–22: id:15–24 — right stickers
+  {id:15, ss:'right', sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=ny1'},
+  {id:16, ss:'right', sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=ny2'},
+  {id:17, ss:'right', sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=ny3'},
+  {id:18, ss:'right', sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=ny4'},
+  {id:19, ss:'right', sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=ny5'},
+  {id:20, ss:'right', sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=ny6'},
+  {id:21, ss:'right', sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=london1'},
+  {id:22, ss:'right', sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=london2'},
+  {id:23, ss:'right', sp:'top',    su:'https://jacquotarthur-dev.github.io/USB002/?id=london3'},
+  {id:24, ss:'right', sp:'bottom', su:'https://jacquotarthur-dev.github.io/USB002/?id=london4'},
+  // 23: id:25 — last interior page, no sticker
+  {id:25, ss:null,    sp:null,     su:null},
+];
+ 
+// Anchors: -1=intro, -2=outro, else 0-based spread index
+const ANCHORS = [-1, 0, 12, -2];
+let anchorIdx = 0;
+ 
+/* ================================================================
+   DOM
+================================================================ */
+const introScene        = document.getElementById('intro-scene');
+const outroScene        = document.getElementById('outro-scene');
+const mainScene         = document.getElementById('main-scene');
+const closedBookScene   = document.getElementById('closedBookScene');
+const closedBook3D      = document.getElementById('closedBook3D');
+const outroBookScene    = document.getElementById('outroBookScene');
+const outroBook3D       = document.getElementById('outroBook3D');
+const outroLightCanvas  = document.getElementById('outroLightCanvas');
+const outroLightCtx     = outroLightCanvas.getContext('2d');
+const outroCoverImage   = new Image();
+
+outroCoverImage.src = COVER_BACK_PNG;
+
+const introLightCanvas = document.getElementById('introLightCanvas');
+const introLightCtx    = introLightCanvas.getContext('2d');
+const introCoverImage  = new Image();
+
+introCoverImage.src = COVER_FRONT_PNG;
+
+const leftBg            = document.getElementById('leftBg');
+const rightBg           = document.getElementById('rightBg');
+const leftLabel         = document.getElementById('leftLabel');
+const rightLabel        = document.getElementById('rightLabel');
+const leftCoverMat      = document.getElementById('leftCoverMat');
+const leftCoverPng      = document.getElementById('leftCoverPng');
+const leftCoverImg      = document.getElementById('leftCoverImg');
+const leftCoverReflect  = document.getElementById('leftCoverReflect');
+const rightCoverMat     = document.getElementById('rightCoverMat');
+const rightCoverPng     = document.getElementById('rightCoverPng');
+const rightCoverImg     = document.getElementById('rightCoverImg');
+const rightCoverReflect = document.getElementById('rightCoverReflect');
+const pageTurner        = document.getElementById('pageTurner');
+const turnerFaceBg      = document.getElementById('turnerFaceBg');
+const turnerBackBg      = document.getElementById('turnerBackBg');
+const turnerFace        = document.getElementById('turnerFace');
+const turnerBack        = document.getElementById('turnerBack');
+const stickerLayer      = document.getElementById('stickerLayer');
+const prevBtn           = document.getElementById('prevBtn');
+const nextBtn           = document.getElementById('nextBtn');
+const anchorPrevBtn     = document.getElementById('anchorPrev');
+const anchorNextBtn     = document.getElementById('anchorNext');
+const pageCounter       = document.getElementById('pageCounter');
+ 
+let current   = 0;
+let animating = false;
+const total   = SPREADS.length; // 24
+ 
+/* ================================================================
+   RENDER
+================================================================ */
+function setBg(el, img, pos) {
+  if (!img) { el.style.backgroundImage = 'none'; return; }
+  el.style.backgroundImage    = `url('${img}')`;
+  el.style.backgroundPosition = pos;
+  el.style.backgroundSize     = '200% 100%';
+}
+ 
+function renderSpread(idx) {
+  const sp  = SPREADS[idx];
+  const img = SPREAD_IMAGES[idx];
+ 
+  setBg(leftBg,  img, 'left center');
+  setBg(rightBg, img, 'right center');
+  // Interior pages: never show cover overlays
+  leftCoverMat.style.display = 'none'; leftCoverPng.style.display = 'none'; leftCoverReflect.style.display = 'none';
+  rightCoverMat.style.display = 'none'; rightCoverPng.style.display = 'none'; rightCoverReflect.style.display = 'none';
+  leftLabel.textContent  = `Spread ${sp.id}`;
+  rightLabel.textContent = `Spread ${sp.id}`;
+ 
+  // Sticker
+  stickerLayer.innerHTML = '';
+  if (sp.ss && sp.su) {
+    const a = document.createElement('a');
+    a.className = 'sticker-btn';
+    a.href = sp.su; a.target = '_blank'; a.rel = 'noopener';
+    const cls = sp.ss === 'left'
+      ? (sp.sp === 'top' ? 'sticker-top-left'    : 'sticker-bottom-left')
+      : (sp.sp === 'top' ? 'sticker-top-right'   : 'sticker-bottom-right');
+    a.classList.add(cls);
+    a.innerHTML = `<img src="${STICKER_SRC}" alt="Link" onerror="this.outerHTML='<div style=\\'width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25)\\'></div>'">`;
+    stickerLayer.appendChild(a);
+  }
+  updateUI();
+}
+ 
+/* ================================================================
+   FLIP
+================================================================ */
+function flipTo(newIdx, dir) {
+  // Past last page forward → outro
+  if (dir === 'next' && current === total - 1) { showOutro(); return; }
+  // Past first page backward → intro
+  if (dir === 'prev' && current === 0) { showIntro(); return; }
+  if (animating || newIdx < 0 || newIdx >= total || newIdx === current) return;
+  animating = true;
+ 
+  const curImg = SPREAD_IMAGES[current];
+  const newImg = SPREAD_IMAGES[newIdx];
+ 
+  // Re-trigger shadow animations by cloning turnerFace/Back
+  const tf = turnerFace;
+  const tb = turnerBack;
+ 
+  pageTurner.style.display = '';
+ 
+  if (dir === 'next') {
+    pageTurner.style.left = '50%'; pageTurner.style.right = 'auto';
+    pageTurner.style.transformOrigin = 'left center';
+    setBg(turnerFaceBg, curImg, 'right center');
+    setBg(turnerBackBg, newImg, 'left center');
+    turnerFace.style.background = '';
+    turnerBack.style.background = '#0d0d0d';
+    // Reveal destination right half
+    setBg(rightBg, newImg, 'right center');
+  } else {
+    pageTurner.style.left = 'auto'; pageTurner.style.right = '50%';
+    pageTurner.style.transformOrigin = 'right center';
+    setBg(turnerFaceBg, curImg, 'left center');
+    setBg(turnerBackBg, newImg, 'right center');
+    turnerFace.style.background = '';
+    turnerBack.style.background = '#0d0d0d';
+    // Reveal destination left half
+    setBg(leftBg, newImg, 'left center');
+  }
+ 
+  // Re-trigger shadow animations
+  [turnerFace, turnerBack].forEach(el => {
+    const sh = el.querySelector('.turner-shadow');
+    if (sh) { sh.style.animation = 'none'; sh.offsetHeight; sh.style.animation = ''; }
+  });
+ 
+  pageTurner.style.animation = 'none';
+  pageTurner.offsetHeight;
+  pageTurner.style.animation = dir === 'next'
+    ? 'flipNextPage 0.7s cubic-bezier(0.4,0,0.2,1) forwards'
+    : 'flipPrevPage 0.7s cubic-bezier(0.4,0,0.2,1) forwards';
+ 
+  pageTurner.addEventListener('animationend', () => {
+    pageTurner.style.display = 'none';
+    pageTurner.style.animation = 'none';
+    current = newIdx;
+    renderSpread(current);
+    animating = false;
+  }, {once: true});
+}
+ 
+/* ================================================================
+   SCENE TRANSITIONS
+================================================================ */
+function showIntro() {
+  mainScene.classList.remove('visible');
+  outroScene.classList.remove('visible');
+  introScene.classList.remove('hidden');
+  anchorIdx = 0;
+  updateUI();
+}
+ 
+function showOutro() {
+  mainScene.classList.remove('visible');
+  introScene.classList.add('hidden');
+  outroScene.classList.add('visible');
+  anchorIdx = ANCHORS.length - 1;
+  updateUI();
+}
+ 
+function openBook() {
+  introScene.classList.add('hidden');
+  outroScene.classList.remove('visible');
+  mainScene.classList.add('visible');
+  anchorIdx = 1;
+  current = ANCHORS[1]; // 0 = first interior spread
+  renderSpread(current);
+  updateUI();
+}
+ 
+// Intro click → open
+closedBookScene.addEventListener('click', openBook);
+ 
+// Outro click → go back to last page
+outroBookScene.addEventListener('click', () => {
+  outroScene.classList.remove('visible');
+  mainScene.classList.add('visible');
+  current = total - 1;
+  renderSpread(current);
+  anchorIdx = ANCHORS.length - 2; // point to last spread anchor
+  updateUI();
+});
+ 
+/* ================================================================
+   UI & ANCHORS
+================================================================ */
+function updateUI() {
+  pageCounter.textContent = `${current + 1} / ${total}`;
+  prevBtn.disabled    = false; // prev from page 0 → intro, always enabled
+  nextBtn.disabled    = false; // next from last → outro, always enabled
+  anchorPrevBtn.disabled = anchorIdx <= 0;
+  anchorNextBtn.disabled = anchorIdx >= ANCHORS.length - 1;
+}
+ 
+nextBtn.addEventListener('click', () => flipTo(current + 1, 'next'));
+prevBtn.addEventListener('click', () => flipTo(current - 1, 'prev'));
+ 
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') flipTo(current + 1, 'next');
+  if (e.key === 'ArrowLeft')  flipTo(current - 1, 'prev');
+});
+ 
+function goToAnchor(ai) {
+  if (ai < 0 || ai >= ANCHORS.length) return;
+  anchorIdx = ai;
+  const target = ANCHORS[ai];
+  if (target === -1) {
+    showIntro();
+  } else if (target === -2) {
+    showOutro();
+  } else {
+    outroScene.classList.remove('visible');
+    introScene.classList.add('hidden');
+    mainScene.classList.add('visible');
+    if (target !== current) {
+      current = target;
+      renderSpread(current);
+      pageTurner.style.display = 'none';
+      animating = false;
+    }
+  }
+  anchorPrevBtn.disabled = anchorIdx <= 0;
+  anchorNextBtn.disabled = anchorIdx >= ANCHORS.length - 1;
+}
+ 
+anchorPrevBtn.addEventListener('click', () => goToAnchor(anchorIdx - 1));
+anchorNextBtn.addEventListener('click', () => goToAnchor(anchorIdx + 1));
+ 
+/* ================================================================
+   COVER REFLECTIONS
+   - Lumière classique sur les couvertures intérieures
+   - Lumière canvas sur l'outro, découpée par l'alpha de cover-back.png
+================================================================ */
+
+function resizeOutroLightCanvas() {
+  if (!outroLightCanvas) return;
+
+  const width = outroLightCanvas.clientWidth;
+  const height = outroLightCanvas.clientHeight;
+
+  if (!width || !height) return;
+
+  const dpr = window.devicePixelRatio || 1;
+
+  outroLightCanvas.width = Math.round(width * dpr);
+  outroLightCanvas.height = Math.round(height * dpr);
+
+  outroLightCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function resizeIntroLightCanvas() {
+  if (!introLightCanvas) return;
+
+  const width = introLightCanvas.clientWidth;
+  const height = introLightCanvas.clientHeight;
+
+  if (!width || !height) return;
+
+  const dpr = window.devicePixelRatio || 1;
+
+  introLightCanvas.width = Math.round(width * dpr);
+  introLightCanvas.height = Math.round(height * dpr);
+
+  introLightCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+
+
+function drawOutroLight(mouseX, mouseY) {
+  if (!outroLightCanvas || !outroCoverImage.complete) return;
+
+  const width = outroLightCanvas.clientWidth;
+  const height = outroLightCanvas.clientHeight;
+
+  if (!width || !height) return;
+
+  /* Nettoyage */
+  outroLightCtx.clearRect(0, 0, width, height);
+
+  /* ==========================================================
+     1. DESSIN DE LA LUMIÈRE
+     ========================================================== */
+
+  const gradient = outroLightCtx.createRadialGradient(
+    mouseX,
+    mouseY,
+    0,
+    mouseX,
+    mouseY,
+    180
+  );
+
+  gradient.addColorStop(0,    'rgba(255,255,255,0.22)');
+  gradient.addColorStop(0.22, 'rgba(255,255,255,0.10)');
+  gradient.addColorStop(0.45, 'rgba(255,255,255,0.04)');
+  gradient.addColorStop(1,    'rgba(255,255,255,0)');
+
+  outroLightCtx.fillStyle = gradient;
+  outroLightCtx.fillRect(0, 0, width, height);
+
+  /* ==========================================================
+     2. ON UTILISE L'ALPHA RÉEL DE cover-back.png
+     ========================================================== */
+
+  outroLightCtx.globalCompositeOperation = 'destination-in';
+
+  const iw = outroCoverImage.naturalWidth;
+  const ih = outroCoverImage.naturalHeight;
+
+  if (iw && ih) {
+
+    /*
+     * Même logique que object-fit: cover
+     */
+    const scale = Math.max(
+      width / iw,
+      height / ih
+    );
+
+    const drawWidth = iw * scale;
+    const drawHeight = ih * scale;
+
+    const offsetX = (width - drawWidth) / 2;
+    const offsetY = (height - drawHeight) / 2;
+
+    outroLightCtx.drawImage(
+      outroCoverImage,
+      offsetX,
+      offsetY,
+      drawWidth,
+      drawHeight
+    );
+  }
+
+  /*
+   * On rétablit le mode normal pour le prochain dessin.
+   */
+  outroLightCtx.globalCompositeOperation = 'source-over';
+}
+
+
+
+
+
+function drawIntroLight(mouseX, mouseY) {
+  if (!introLightCanvas || !introCoverImage.complete) return;
+
+  const width = introLightCanvas.clientWidth;
+  const height = introLightCanvas.clientHeight;
+
+  if (!width || !height) return;
+
+  introLightCtx.clearRect(0, 0, width, height);
+
+  /* ==========================================================
+     1. LUMIÈRE AUTOUR DU CURSEUR
+     ========================================================== */
+
+  const gradient = introLightCtx.createRadialGradient(
+    mouseX,
+    mouseY,
+    0,
+    mouseX,
+    mouseY,
+    180
+  );
+
+  gradient.addColorStop(0,    'rgba(255,255,255,0.22)');
+  gradient.addColorStop(0.22, 'rgba(255,255,255,0.10)');
+  gradient.addColorStop(0.45, 'rgba(255,255,255,0.04)');
+  gradient.addColorStop(1,    'rgba(255,255,255,0)');
+
+  introLightCtx.fillStyle = gradient;
+  introLightCtx.fillRect(0, 0, width, height);
+
+  /* ==========================================================
+     2. L'ALPHA DE cover-front.png DEVIENT LE MASQUE
+     ========================================================== */
+
+  introLightCtx.globalCompositeOperation = 'destination-in';
+
+  const iw = introCoverImage.naturalWidth;
+  const ih = introCoverImage.naturalHeight;
+
+  if (iw && ih) {
+
+    /*
+     * Même logique que object-fit: cover
+     */
+    const scale = Math.max(
+      width / iw,
+      height / ih
+    );
+
+    const drawWidth = iw * scale;
+    const drawHeight = ih * scale;
+
+    const offsetX = (width - drawWidth) / 2;
+    const offsetY = (height - drawHeight) / 2;
+
+    introLightCtx.drawImage(
+      introCoverImage,
+      offsetX,
+      offsetY,
+      drawWidth,
+      drawHeight
+    );
+  }
+
+  introLightCtx.globalCompositeOperation = 'source-over';
+}
+
+
+
+
+
+document.addEventListener('mousemove', e => {
+
+  /* ==========================================================
+     COUVERTURES DU LIVRE OUVERT
+     → On conserve exactement leur fonctionnement actuel.
+     ========================================================== */
+
+  [leftCoverReflect, rightCoverReflect].forEach(el => {
+
+    if (el.style.display === 'none') return;
+
+    const rc = el.getBoundingClientRect();
+
+    if (!rc.width || !rc.height) return;
+
+    const x = (
+      (e.clientX - rc.left) /
+      rc.width *
+      100
+    ).toFixed(1);
+
+    const y = (
+      (e.clientY - rc.top) /
+      rc.height *
+      100
+    ).toFixed(1);
+
+    el.style.background =
+      `radial-gradient(
+        ellipse at ${x}% ${y}%,
+        rgba(255,255,255,0.18) 0%,
+        rgba(255,255,255,0.05) 30%,
+        transparent 60%
+      )`;
+  });
+
+
+
+
+/* ==========================================================
+   INTRO
+   → lumière limitée à l'alpha de cover-front.png
+   ========================================================== */
+
+if (introScene.classList.contains('hidden') === false) {
+
+  const rc = introLightCanvas.getBoundingClientRect();
+
+  if (rc.width && rc.height) {
+
+    const x =
+      (e.clientX - rc.left) *
+      (introLightCanvas.clientWidth / rc.width);
+
+    const y =
+      (e.clientY - rc.top) *
+      (introLightCanvas.clientHeight / rc.height);
+
+    drawIntroLight(x, y);
+  }
+}
+
+
+
+
+  /* ==========================================================
+     OUTRO
+     → La lumière est découpée par l'alpha réel du PNG.
+     ========================================================== */
+
+  if (outroScene.classList.contains('visible')) {
+
+    const rc = outroLightCanvas.getBoundingClientRect();
+
+    if (rc.width && rc.height) {
+
+      /*
+       * Position de la souris dans le canvas.
+       */
+      const x =
+        (e.clientX - rc.left) *
+        (outroLightCanvas.clientWidth / rc.width);
+
+      const y =
+        (e.clientY - rc.top) *
+        (outroLightCanvas.clientHeight / rc.height);
+
+      drawOutroLight(x, y);
+    }
+  }
+});
+
+
+window.addEventListener('resize', () => {
+
+  resizeOutroLightCanvas();
+  resizeIntroLightCanvas();
+
+  if (outroScene.classList.contains('visible')) {
+    drawOutroLight(
+      outroLightCanvas.clientWidth / 2,
+      outroLightCanvas.clientHeight / 2
+    );
+  }
+
+  if (!introScene.classList.contains('hidden')) {
+    drawIntroLight(
+      introLightCanvas.clientWidth / 2,
+      introLightCanvas.clientHeight / 2
+    );
+  }
+});
+
+
+outroCoverImage.onload = () => {
+  resizeOutroLightCanvas();
+};
+
+introCoverImage.onload = () => {
+  resizeIntroLightCanvas();
+};
+ 
+/* ================================================================
+   BOOK ROTATION — intro (spine left, opens right)
+================================================================ */
+const BASE_RY = -22, BASE_RX = 6, MAX_RY = 20, MAX_RX = 12;
+ 
+closedBookScene.addEventListener('mousemove', e => {
+  closedBook3D.classList.add('is-hovered');
+  const rect = closedBookScene.getBoundingClientRect();
+  const nx = (e.clientX - rect.left  - rect.width  / 2) / (rect.width  / 2);
+  const ny = (e.clientY - rect.top   - rect.height / 2) / (rect.height / 2);
+  closedBook3D.style.transition = 'transform 0.07s ease-out';
+  closedBook3D.style.transform  = `rotateY(${BASE_RY + nx * MAX_RY}deg) rotateX(${BASE_RX - ny * MAX_RX}deg)`;
+});
+closedBookScene.addEventListener('mouseleave', () => {
+  closedBook3D.classList.remove('is-hovered');
+  closedBook3D.style.transition = 'transform 0.7s ease';
+  closedBook3D.style.transform  = `rotateY(${BASE_RY}deg) rotateX(${BASE_RX}deg)`;
+});
+ 
+/* ================================================================
+   BOOK ROTATION — outro (mirrored: spine right, positive base RY)
+================================================================ */
+const OUTRO_BASE_RY = -22; 
+ 
+outroBookScene.addEventListener('mousemove', e => {
+  outroBook3D.classList.add('is-hovered');
+  const rect = outroBookScene.getBoundingClientRect();
+  const nx = (e.clientX - rect.left  - rect.width  / 2) / (rect.width  / 2);
+  const ny = (e.clientY - rect.top   - rect.height / 2) / (rect.height / 2);
+  outroBook3D.style.transition = 'transform 0.07s ease-out';
+  // Mirror: +nx*MAX_RY (same direction) but base is +22 instead of -22
+  outroBook3D.style.transform  = `rotateY(${OUTRO_BASE_RY + nx * MAX_RY}deg) rotateX(${BASE_RX - ny * MAX_RX}deg)`;
+});
+outroBookScene.addEventListener('mouseleave', () => {
+  outroBook3D.classList.remove('is-hovered');
+  outroBook3D.style.transition = 'transform 0.7s ease';
+  outroBook3D.style.transform  = `rotateY(${OUTRO_BASE_RY}deg) rotateX(${BASE_RX}deg)`;
+});
+ 
+/* ================================================================
+   CURSOR
+================================================================ */
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursorEl.style.left = e.clientX + 'px';
+  cursorEl.style.top  = e.clientY + 'px';
+});
+ 
+/* ================================================================
+   INIT
+================================================================ */
+anchorPrevBtn.disabled = true;
+renderSpread(0);
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('loader').classList.add('done'), 300);
+});
+</script>
+</body>
+</html>
+ 
